@@ -7,8 +7,11 @@
 #include <string>
 #include <sstream>
 #include <vector>
+#include <functional>
+#include <cstring>
 #include "GpuMonitor.hpp"
 #include "Settings.hpp"
+#include <commctrl.h>
 
 // ≤Àµ•√¸¡ÓID∂®“Â
 #define IDM_EXIT 1001
@@ -410,16 +413,74 @@ int main() {
     
     int x, y;
 
+    // Try to attach near the rightmost tray icon if possible
+    std::function<HWND(HWND)> FindToolbarWindow;
+    FindToolbarWindow = [&FindToolbarWindow](HWND parent)->HWND {
+        // Recursive search for ToolbarWindow32 under parent
+        for (HWND child = GetWindow(parent, GW_CHILD); child; child = GetWindow(child, GW_HWNDNEXT)) {
+            char cls[64] = {0};
+            GetClassNameA(child, cls, sizeof(cls));
+            if (strcmp(cls, "ToolbarWindow32") == 0) return child;
+            HWND sub = FindToolbarWindow(child);
+            if (sub) return sub;
+        }
+        return NULL;
+    };
+
+    auto GetRightmostToolbarIconRect = [](HWND hToolbar, RECT& outRect)->bool {
+        if (!hToolbar) return false;
+        LRESULT count = SendMessageA(hToolbar, TB_BUTTONCOUNT, 0, 0);
+        if (count <= 0) return false;
+        for (int i = (int)count - 1; i >= 0; --i) {
+            RECT r = {0};
+            LRESULT ok = SendMessageA(hToolbar, TB_GETITEMRECT, (WPARAM)i, (LPARAM)&r);
+            if (ok) {
+                // Map toolbar client rect to screen (map top-left and bottom-right)
+                POINT pts[2];
+                pts[0].x = r.left; pts[0].y = r.top;
+                pts[1].x = r.right; pts[1].y = r.bottom;
+                MapWindowPoints(hToolbar, NULL, pts, 2);
+                outRect.left = pts[0].x;
+                outRect.top = pts[0].y;
+                outRect.right = pts[1].x;
+                outRect.bottom = pts[1].y;
+                return true;
+            }
+        }
+        return false;
+    };
+
+    RECT iconRect = {0};
+    bool haveIconRect = false;
+
     if ((rcTaskbar.right - rcTaskbar.left) > taskbarHeight) {
         y = rcTaskbar.top; 
         if (foundTray && rcTray.left > rcTaskbar.left) {
-            x = rcTray.left - width - 10; 
+            // try to find toolbar and rightmost icon
+            HWND hToolbar = FindToolbarWindow(hTray);
+            if (hToolbar) {
+                RECT rIcon = {0};
+                if (GetRightmostToolbarIconRect(hToolbar, rIcon)) {
+                    iconRect = rIcon; haveIconRect = true;
+                    x = iconRect.left - width - 6; // attach to left of icon
+                } else {
+                    x = rcTray.left - width - 10; 
+                }
+            } else {
+                x = rcTray.left - width - 10; 
+            }
         } else {
             x = rcTaskbar.right - width - 150; 
         }
     } else {
         x = rcTaskbar.left;
         y = rcTaskbar.bottom - height - 10;
+    }
+
+    // If we have icon rect, make sure overlay vertically aligns with tray icon center
+    if (haveIconRect) {
+        int iconCenterY = (iconRect.top + iconRect.bottom) / 2;
+        y = iconCenterY - (height / 2);
     }
 
     HWND hwnd = CreateWindowExA(
