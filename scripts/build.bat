@@ -54,9 +54,27 @@ if not exist "bin" mkdir bin
 
 :: Basic checks
 :: Check MSVC compiler: use goto to avoid parsing problems when paths contain parentheses
+: Try to find cl.exe; if not present, attempt PowerShell helper to detect environment
 if exist "%MSVC_ROOT%\bin\Hostx64\x64\cl.exe" goto :msvc_ok
-echo Error: MSVC compiler not found at: %MSVC_ROOT%
-echo Please run this script from "x64 Native Tools Command Prompt for VS" or set MSVC_ROOT correctly.
+echo MSVC compiler not found at: %MSVC_ROOT%
+echo Attempting automatic detection via PowerShell helper (scripts\find_vs.ps1)...
+for /f "usebackq delims=" %%E in (`powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0find_vs.ps1"`) do (
+    rem Each line from helper is KEY=VALUE
+    for /f "delims=" %%K in ("%%E") do set "%%K"
+)
+
+rem If helper found CLPATH or MSVC_ROOT, set PATH accordingly
+if defined CLPATH (
+    for %%D in ("%CLPATH%") do set "CLDIR=%%~dpD"
+    set "PATH=%CLDIR%;%PATH%"
+    goto :msvc_ok
+)
+if defined MSVC_ROOT if exist "%MSVC_ROOT%\bin\Hostx64\x64\cl.exe" (
+    set "PATH=%MSVC_ROOT%\bin\Hostx64\x64;%PATH%"
+    goto :msvc_ok
+)
+
+echo Error: MSVC compiler still not found after detection. Please run this script from "x64 Native Tools Command Prompt for VS" or set MSVC_ROOT correctly.
 exit /b 1
 :msvc_ok
 
