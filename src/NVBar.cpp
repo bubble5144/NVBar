@@ -68,7 +68,8 @@ void UpdateLayeredWindowContent(HWND hwnd, AppContext* ctx) {
     BITMAPINFO bmi = {0};
     bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
     bmi.bmiHeader.biWidth = width;
-    bmi.bmiHeader.biHeight = height; // Top-down
+    // Use a top-down DIB (negative height) so the bitmap lines map directly to our drawing order
+    bmi.bmiHeader.biHeight = -height; // Top-down
     bmi.bmiHeader.biPlanes = 1;
     bmi.bmiHeader.biBitCount = 32;
     bmi.bmiHeader.biCompression = BI_RGB;
@@ -201,6 +202,10 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
     case WM_LBUTTONDOWN:
         ReleaseCapture();
         SendMessage(hwnd, WM_NCLBUTTONDOWN, HTCAPTION, 0);
+        // After user starts moving the window, the system can change z-order briefly.
+        // Ensure we restore topmost and redraw immediately to avoid a temporary disappearance.
+        SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+        UpdateLayeredWindowContent(hwnd, ctx);
         return 0;
 
     case WM_COMMAND:
@@ -322,12 +327,15 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
             if (ctx) {
                 WINDOWPOS* wp = (WINDOWPOS*)lParam;
                 // If z-order changed or shown/hidden flags, restore topmost and redraw
-                if (wp && (wp->flags & (SWP_SHOWWINDOW | SWP_NOZORDER)) == 0) {
-                    SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_SHOWWINDOW);
-                    UpdateLayeredWindowContent(hwnd, ctx);
-                } else {
-                    // Still attempt to ensure topmost
-                    SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+                if (wp) {
+                    // If z-order changed (i.e. SWP_NOZORDER not set) or window was shown, restore topmost and redraw.
+                    if (!(wp->flags & SWP_NOZORDER) || (wp->flags & SWP_SHOWWINDOW)) {
+                        SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_SHOWWINDOW);
+                        UpdateLayeredWindowContent(hwnd, ctx);
+                    } else {
+                        // Otherwise still ensure we remain topmost without forcing show
+                        SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+                    }
                 }
             }
         }
