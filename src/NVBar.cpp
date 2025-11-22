@@ -289,9 +289,15 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
             AppendMenuA(hMenu, MF_SEPARATOR, 0, NULL);
             AppendMenuA(hMenu, MF_STRING, IDM_EXIT, "Exit");
             
-            SetForegroundWindow(hwnd); 
+            SetForegroundWindow(hwnd);
             TrackPopupMenu(hMenu, TPM_BOTTOMALIGN | TPM_LEFTALIGN, pt.x, pt.y, 0, hwnd, NULL);
             DestroyMenu(hMenu);
+
+            // Ensure the window remains topmost and refresh content after menu closes.
+            // TrackPopupMenu can change activation/focus; restore topmost and redraw.
+            PostMessage(hwnd, WM_NULL, 0, 0);
+            SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW);
+            UpdateLayeredWindowContent(hwnd, ctx);
         }
         return 0;
 
