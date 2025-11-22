@@ -310,7 +310,9 @@ int main() {
     // Hide the console window
     ShowWindow(GetConsoleWindow(), SW_HIDE);
 
-    AppContext ctx = {0};
+    // 初始化应用程序上下文
+    AppContext ctx;
+    ctx.hFont = NULL;  // 初始化字体句柄为NULL
     
     // 检查GPU是否初始化成功
     if (!ctx.monitor.IsInitialized()) {

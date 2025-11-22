@@ -117,12 +117,21 @@ echo.
 :: /O2 = Maximize Speed
 :: /EHsc = Exception Handling
 :: /W3 = Warning Level 3
-cl.exe /nologo /MT /O2 /EHsc /W3 %SRC_FILES% /Fe"bin\%OUT_NAME%.exe" /link /INCREMENTAL:NO nvml.lib user32.lib gdi32.lib shell32.lib Advapi32.lib
+:: 使用临时文件名避免文件被占用的问题
+cl.exe /nologo /MT /O2 /EHsc /W3 %SRC_FILES% /Fe"bin\%OUT_NAME%_new.exe" /link /INCREMENTAL:NO nvml.lib user32.lib gdi32.lib shell32.lib Advapi32.lib
 
 if %errorlevel% neq 0 (
     echo.
     echo Error: Build failed.
     exit /b %errorlevel%
+)
+
+:: 替换旧文件（如果存在）
+if exist "bin\%OUT_NAME%.exe" (
+    del /f /q "bin\%OUT_NAME%.exe" 2>nul
+)
+if exist "bin\%OUT_NAME%_new.exe" (
+    ren "bin\%OUT_NAME%_new.exe" "%OUT_NAME%.exe"
 )
 
 echo.
