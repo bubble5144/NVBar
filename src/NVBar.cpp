@@ -301,6 +301,38 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
         }
         return 0;
 
+    case WM_ACTIVATE:
+        {
+            // When activation changes, ensure overlay remains topmost and visible
+            if (ctx) {
+                if (LOWORD(wParam) != WA_INACTIVE) {
+                    SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_SHOWWINDOW);
+                    UpdateLayeredWindowContent(hwnd, ctx);
+                } else {
+                    // If deactivated, still keep topmost in case taskbar focus shifts
+                    SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+                }
+            }
+        }
+        return 0;
+
+    case WM_WINDOWPOSCHANGED:
+        {
+            // Window position or z-order changed; ensure topmost and redraw
+            if (ctx) {
+                WINDOWPOS* wp = (WINDOWPOS*)lParam;
+                // If z-order changed or shown/hidden flags, restore topmost and redraw
+                if (wp && (wp->flags & (SWP_SHOWWINDOW | SWP_NOZORDER)) == 0) {
+                    SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_SHOWWINDOW);
+                    UpdateLayeredWindowContent(hwnd, ctx);
+                } else {
+                    // Still attempt to ensure topmost
+                    SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+                }
+            }
+        }
+        return 0;
+
     case WM_DESTROY:
         if (ctx && ctx->hFont) {
             DeleteObject(ctx->hFont);
