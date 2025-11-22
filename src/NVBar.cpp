@@ -1,3 +1,8 @@
+/**
+ * NVBar - NVIDIA GPU监控工具
+ * 在Windows任务栏显示GPU使用率、温度和内存使用率
+ */
+
 #include <windows.h>
 #include <string>
 #include <sstream>
@@ -5,6 +10,7 @@
 #include "GpuMonitor.hpp"
 #include "Settings.hpp"
 
+// 菜单命令ID定义
 #define IDM_EXIT 1001
 #define IDM_AUTORUN 1002
 #define IDM_COLOR_GPU_RED 2001
@@ -20,19 +26,43 @@
 #define IDM_COLOR_MEM_BLUE 2011
 #define IDM_COLOR_MEM_WHITE 2012
 
+/**
+ * 应用程序上下文
+ * 包含GPU监控器、设置和共享资源
+ */
 struct AppContext {
-    GpuMonitor monitor;
-    Settings settings;
+    GpuMonitor monitor;  // GPU监控器
+    Settings settings;    // 应用程序设置
+    HFONT hFont;          // 复用字体对象，避免重复创建
 };
 
+/**
+ * 更新分层窗口内容
+ * 使用GDI绘制文本到32位位图，然后通过UpdateLayeredWindow显示
+ * @param hwnd 窗口句柄
+ * @param ctx 应用程序上下文
+ */
 void UpdateLayeredWindowContent(HWND hwnd, AppContext* ctx) {
+    if (!ctx || !ctx->monitor.IsInitialized()) {
+        return;  // GPU未初始化，不更新显示
+    }
+
     RECT rc;
-    GetWindowRect(hwnd, &rc);
+    if (!GetWindowRect(hwnd, &rc)) {
+        return;  // 获取窗口矩形失败
+    }
+
     int width = rc.right - rc.left;
     int height = rc.bottom - rc.top;
 
     HDC hdcScreen = GetDC(NULL);
+    if (!hdcScreen) return;
+
     HDC hdcMem = CreateCompatibleDC(hdcScreen);
+    if (!hdcMem) {
+        ReleaseDC(NULL, hdcScreen);
+        return;
+    }
     
     // Create 32-bit bitmap for alpha channel
     BITMAPINFO bmi = {0};
@@ -45,6 +75,12 @@ void UpdateLayeredWindowContent(HWND hwnd, AppContext* ctx) {
 
     void* pBits = NULL;
     HBITMAP hBitmap = CreateDIBSection(hdcScreen, &bmi, DIB_RGB_COLORS, &pBits, NULL, 0);
+    if (!hBitmap || !pBits) {
+        DeleteDC(hdcMem);
+        ReleaseDC(NULL, hdcScreen);
+        return;
+    }
+
     HBITMAP hOldBitmap = (HBITMAP)SelectObject(hdcMem, hBitmap);
 
     // Initialize with almost-transparent background (Alpha=1)
@@ -54,9 +90,8 @@ void UpdateLayeredWindowContent(HWND hwnd, AppContext* ctx) {
         pixels[i] = 0x01000000; 
     }
 
-    // Draw Text
-    HFONT hFont = CreateFontA(18, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY, DEFAULT_PITCH | FF_SWISS, "Segoe UI");
-    HFONT hOldFont = (HFONT)SelectObject(hdcMem, hFont);
+    // Draw Text - 使用复用的字体对象
+    HFONT hOldFont = (HFONT)SelectObject(hdcMem, ctx->hFont);
     SetBkMode(hdcMem, TRANSPARENT);
 
     RECT rect = {5, 0, width, height}; // Padding left 5
@@ -96,35 +131,48 @@ void UpdateLayeredWindowContent(HWND hwnd, AppContext* ctx) {
     UpdateLayeredWindow(hwnd, hdcScreen, NULL, &sizeWnd, hdcMem, &ptSrc, 0, &blend, ULW_ALPHA);
 
     SelectObject(hdcMem, hOldFont);
-    DeleteObject(hFont);
     SelectObject(hdcMem, hOldBitmap);
     DeleteObject(hBitmap);
     DeleteDC(hdcMem);
     ReleaseDC(NULL, hdcScreen);
 }
 
+/**
+ * 根据文本内容调整窗口大小
+ * @param hwnd 窗口句柄
+ * @param ctx 应用程序上下文
+ */
 void AdjustWindowSize(HWND hwnd, AppContext* ctx) {
+    if (!ctx || !ctx->monitor.IsInitialized()) {
+        return;
+    }
+
     HDC hdc = GetDC(hwnd);
-    HFONT hFont = CreateFontA(18, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY, DEFAULT_PITCH | FF_SWISS, "Segoe UI");
-    HFONT hOldFont = (HFONT)SelectObject(hdc, hFont);
+    if (!hdc) return;
+
+    HFONT hOldFont = (HFONT)SelectObject(hdc, ctx->hFont);
 
     std::string s = "GPU: " + std::to_string(ctx->monitor.GetGpuUtil()) + "%  TEMP: " + std::to_string(ctx->monitor.GetTemp()) + "C  MEM: " + std::to_string(ctx->monitor.GetMemUtil()) + "%";
     RECT rect = {0, 0, 0, 0};
     DrawTextA(hdc, s.c_str(), -1, &rect, DT_CALCRECT | DT_SINGLELINE);
 
     SelectObject(hdc, hOldFont);
-    DeleteObject(hFont);
     ReleaseDC(hwnd, hdc);
 
     int width = rect.right - rect.left + 20; // +20 padding
     
     RECT rcWindow;
-    GetWindowRect(hwnd, &rcWindow);
-    if ((rcWindow.right - rcWindow.left) != width) {
-        SetWindowPos(hwnd, 0, 0, 0, width, rcWindow.bottom - rcWindow.top, SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+    if (GetWindowRect(hwnd, &rcWindow)) {
+        if ((rcWindow.right - rcWindow.left) != width) {
+            SetWindowPos(hwnd, 0, 0, 0, width, rcWindow.bottom - rcWindow.top, SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+        }
     }
 }
 
+/**
+ * 窗口过程函数
+ * 处理所有窗口消息
+ */
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     AppContext* ctx = (AppContext*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
 
@@ -164,19 +212,44 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
                 bool enabled = ctx->settings.IsAutoRunEnabled();
                 ctx->settings.SetAutoRun(!enabled);
             } 
-            // Color Handlers
-            else if (id == IDM_COLOR_GPU_RED) ctx->settings.colorGpu = RGB(255, 0, 0);
-            else if (id == IDM_COLOR_GPU_GREEN) ctx->settings.colorGpu = RGB(0, 255, 0);
-            else if (id == IDM_COLOR_GPU_BLUE) ctx->settings.colorGpu = RGB(30, 144, 255);
-            else if (id == IDM_COLOR_GPU_WHITE) ctx->settings.colorGpu = RGB(255, 255, 255);
-            else if (id == IDM_COLOR_TEMP_RED) ctx->settings.colorTemp = RGB(255, 0, 0);
-            else if (id == IDM_COLOR_TEMP_GREEN) ctx->settings.colorTemp = RGB(0, 255, 0);
-            else if (id == IDM_COLOR_TEMP_BLUE) ctx->settings.colorTemp = RGB(30, 144, 255);
-            else if (id == IDM_COLOR_TEMP_WHITE) ctx->settings.colorTemp = RGB(255, 255, 255);
-            else if (id == IDM_COLOR_MEM_RED) ctx->settings.colorMem = RGB(255, 0, 0);
-            else if (id == IDM_COLOR_MEM_GREEN) ctx->settings.colorMem = RGB(0, 255, 0);
-            else if (id == IDM_COLOR_MEM_BLUE) ctx->settings.colorMem = RGB(30, 144, 255);
-            else if (id == IDM_COLOR_MEM_WHITE) ctx->settings.colorMem = RGB(255, 255, 255);
+            // Color Handlers - 保存颜色设置
+            else if (id == IDM_COLOR_GPU_RED) {
+                ctx->settings.colorGpu = RGB(255, 0, 0);
+                ctx->settings.SaveColors();
+            } else if (id == IDM_COLOR_GPU_GREEN) {
+                ctx->settings.colorGpu = RGB(0, 255, 0);
+                ctx->settings.SaveColors();
+            } else if (id == IDM_COLOR_GPU_BLUE) {
+                ctx->settings.colorGpu = RGB(30, 144, 255);
+                ctx->settings.SaveColors();
+            } else if (id == IDM_COLOR_GPU_WHITE) {
+                ctx->settings.colorGpu = RGB(255, 255, 255);
+                ctx->settings.SaveColors();
+            } else if (id == IDM_COLOR_TEMP_RED) {
+                ctx->settings.colorTemp = RGB(255, 0, 0);
+                ctx->settings.SaveColors();
+            } else if (id == IDM_COLOR_TEMP_GREEN) {
+                ctx->settings.colorTemp = RGB(0, 255, 0);
+                ctx->settings.SaveColors();
+            } else if (id == IDM_COLOR_TEMP_BLUE) {
+                ctx->settings.colorTemp = RGB(30, 144, 255);
+                ctx->settings.SaveColors();
+            } else if (id == IDM_COLOR_TEMP_WHITE) {
+                ctx->settings.colorTemp = RGB(255, 255, 255);
+                ctx->settings.SaveColors();
+            } else if (id == IDM_COLOR_MEM_RED) {
+                ctx->settings.colorMem = RGB(255, 0, 0);
+                ctx->settings.SaveColors();
+            } else if (id == IDM_COLOR_MEM_GREEN) {
+                ctx->settings.colorMem = RGB(0, 255, 0);
+                ctx->settings.SaveColors();
+            } else if (id == IDM_COLOR_MEM_BLUE) {
+                ctx->settings.colorMem = RGB(30, 144, 255);
+                ctx->settings.SaveColors();
+            } else if (id == IDM_COLOR_MEM_WHITE) {
+                ctx->settings.colorMem = RGB(255, 255, 255);
+                ctx->settings.SaveColors();
+            }
 
             if (id >= 2000) { 
                 UpdateLayeredWindowContent(hwnd, ctx);
@@ -223,6 +296,10 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
         return 0;
 
     case WM_DESTROY:
+        if (ctx && ctx->hFont) {
+            DeleteObject(ctx->hFont);
+            ctx->hFont = NULL;
+        }
         PostQuitMessage(0);
         return 0;
     }
@@ -233,7 +310,20 @@ int main() {
     // Hide the console window
     ShowWindow(GetConsoleWindow(), SW_HIDE);
 
-    AppContext ctx;
+    AppContext ctx = {0};
+    
+    // 检查GPU是否初始化成功
+    if (!ctx.monitor.IsInitialized()) {
+        // GPU未初始化，可以显示错误消息框（可选）
+        // MessageBoxA(NULL, "Failed to initialize NVIDIA GPU monitor.\nPlease ensure you have an NVIDIA GPU with latest drivers installed.", "NVBar Error", MB_OK | MB_ICONERROR);
+        return 1;
+    }
+
+    // 创建并初始化字体对象（复用，避免重复创建）
+    ctx.hFont = CreateFontA(18, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY, DEFAULT_PITCH | FF_SWISS, "Segoe UI");
+    if (!ctx.hFont) {
+        return 1;  // 字体创建失败
+    }
 
     // Register Window Class
     const char CLASS_NAME[] = "GPUMonitorTaskbarOverlay";
@@ -244,7 +334,10 @@ int main() {
     wc.hbrBackground = (HBRUSH)GetStockObject(BLACK_BRUSH); 
     wc.hCursor = LoadCursor(NULL, IDC_ARROW);
 
-    RegisterClassA(&wc);
+    if (!RegisterClassA(&wc)) {
+        DeleteObject(ctx.hFont);
+        return 1;  // 窗口类注册失败
+    }
 
     // Find Taskbar Position
     HWND hTaskbar = FindWindowA("Shell_TrayWnd", NULL);
@@ -294,7 +387,9 @@ int main() {
     );
 
     if (hwnd == NULL) {
-        return 0;
+        DeleteObject(ctx.hFont);
+        UnregisterClassA(CLASS_NAME, GetModuleHandle(NULL));
+        return 1;  // 窗口创建失败
     }
 
     UpdateLayeredWindowContent(hwnd, &ctx);
