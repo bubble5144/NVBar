@@ -1,0 +1,22 @@
+# Build output
+bin/
+*.exe
+*.obj
+*.lib
+*.exp
+*.pdb
+*.ilk
+
+# Temporary files
+*.log
+*.tlog
+*.tmp
+*.iobj
+*.ipdb
+
+# VS Code
+.vscode/
+
+# System
+Thumbs.db
+Desktop.ini
