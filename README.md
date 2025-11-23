@@ -23,8 +23,7 @@
 ## Releases
 
 - 最新版本：**v0.1.0**
-- 下载页面： https://github.com/bubble5144/NVBar/releases
-- 说明：仓库 `release` 分支也包含 `bin/NVBar.exe`（方便直接获取二进制）。
+- 下载页面： `bin/NVBar.exe`
 
 ## Build
 
@@ -62,7 +61,7 @@ MIT
 
 ## Usage
 
-1.  Download `NVBar.exe` from the [Releases](https://github.com/bubble5144/NVBar/releases) page.
+1.  Download `NVBar.exe` from `bin/`.
 2.  Run it.
 3.  Right-click to configure colors or set to run at startup.
 
