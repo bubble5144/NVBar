@@ -23,7 +23,7 @@
 ## Releases
 
 - 最新版本：**v0.1.0**
-- 下载页面： `bin/NVBar.exe`
+- 下载页面： `bin\NVBar.exe`
 
 ## Build
 
@@ -61,7 +61,7 @@ MIT
 
 ## Usage
 
-1.  Download `NVBar.exe` from `bin/`.
+1.  Download `NVBar.exe` from `bin\`.
 2.  Run it.
 3.  Right-click to configure colors or set to run at startup.
 
