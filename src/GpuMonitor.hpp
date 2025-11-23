@@ -1,9 +1,9 @@
-#pragma once
+ï»¿#pragma once
 #include <nvml.h>
 
 /**
- * GPU¼à¿ØÀà
- * Ê¹ÓÃNVIDIA NVML¿â»ñÈ¡GPUÊ¹ÓÃÂÊ¡¢ÄÚ´æÊ¹ÓÃÂÊºÍÎÂ¶È
+ * GPUç›‘æ§ç±»
+ * ä½¿ç”¨NVIDIA NVMLåº“è·å–GPUä½¿ç”¨ç‡ã€å†…å­˜ä½¿ç”¨ç‡å’Œæ¸©åº¦
  */
 class GpuMonitor {
 public:
@@ -11,27 +11,27 @@ public:
     ~GpuMonitor();
 
     /**
-     * ¸üĞÂGPU×´Ì¬ĞÅÏ¢
-     * ´ÓNVML»ñÈ¡×îĞÂµÄÊ¹ÓÃÂÊºÍÎÂ¶ÈÊı¾İ
+     * æ›´æ–°GPUçŠ¶æ€ä¿¡æ¯
+     * ä»NVMLè·å–æœ€æ–°çš„ä½¿ç”¨ç‡å’Œæ¸©åº¦æ•°æ®
      */
     void Update();
     
-    /** »ñÈ¡GPUÊ¹ÓÃÂÊ (0-100%) */
+    /** è·å–GPUä½¿ç”¨ç‡ (0-100%) */
     unsigned int GetGpuUtil() const { return gpuUtil; }
     
-    /** »ñÈ¡ÄÚ´æÊ¹ÓÃÂÊ (0-100%) */
+    /** è·å–å†…å­˜ä½¿ç”¨ç‡ (0-100%) */
     unsigned int GetMemUtil() const { return memUtil; }
     
-    /** »ñÈ¡GPUÎÂ¶È (ÉãÊÏ¶È) */
+    /** è·å–GPUæ¸©åº¦ (æ‘„æ°åº¦) */
     unsigned int GetTemp() const { return gpuTemp; }
     
-    /** ¼ì²éNVMLÊÇ·ñ³É¹¦³õÊ¼»¯ */
+    /** æ£€æŸ¥NVMLæ˜¯å¦æˆåŠŸåˆå§‹åŒ– */
     bool IsInitialized() const { return initialized; }
 
 private:
-    nvmlDevice_t device;        // NVMLÉè±¸¾ä±ú
-    bool initialized = false;    // ³õÊ¼»¯×´Ì¬
-    unsigned int gpuUtil = 0;    // GPUÊ¹ÓÃÂÊ
-    unsigned int memUtil = 0;    // ÄÚ´æÊ¹ÓÃÂÊ
-    unsigned int gpuTemp = 0;    // GPUÎÂ¶È
+    nvmlDevice_t device;        // NVMLè®¾å¤‡å¥æŸ„
+    bool initialized = false;    // åˆå§‹åŒ–çŠ¶æ€
+    unsigned int gpuUtil = 0;    // GPUä½¿ç”¨ç‡
+    unsigned int memUtil = 0;    // å†…å­˜ä½¿ç”¨ç‡
+    unsigned int gpuTemp = 0;    // GPUæ¸©åº¦
 };

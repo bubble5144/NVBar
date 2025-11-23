@@ -1,28 +1,28 @@
-#pragma once
+ï»¿#pragma once
 #include <windows.h>
 
 /**
- * ÉèÖÃ¹ÜÀíÀà
- * ´¦Àí¿ª»ú×ÔÆô¶¯ºÍÑÕÉ«ÉèÖÃµÄ³Ö¾Ã»¯
+ * è®¾ç½®ç®¡ç†ç±»
+ * å¤„ç†å¼€æœºè‡ªå¯åŠ¨å’Œé¢œè‰²è®¾ç½®çš„æŒä¹…åŒ–
  */
 class Settings {
 public:
     Settings();
 
-    /** ¼ì²éÊÇ·ñÆôÓÃÁË¿ª»ú×ÔÆô¶¯ */
+    /** æ£€æŸ¥æ˜¯å¦å¯ç”¨äº†å¼€æœºè‡ªå¯åŠ¨ */
     bool IsAutoRunEnabled();
     
-    /** ÉèÖÃ¿ª»ú×ÔÆô¶¯ */
+    /** è®¾ç½®å¼€æœºè‡ªå¯åŠ¨ */
     void SetAutoRun(bool enable);
 
-    // ÑÕÉ«ÉèÖÃ£¨¹«¿ª³ÉÔ±±äÁ¿£¬±ãÓÚÖ±½Ó·ÃÎÊ£©
-    COLORREF colorGpu;   // GPUÊ¹ÓÃÂÊÏÔÊ¾ÑÕÉ«
-    COLORREF colorTemp;  // ÎÂ¶ÈÏÔÊ¾ÑÕÉ«
-    COLORREF colorMem;   // ÄÚ´æÊ¹ÓÃÂÊÏÔÊ¾ÑÕÉ«
+    // é¢œè‰²è®¾ç½®ï¼ˆå…¬å¼€æˆå‘˜å˜é‡ï¼Œä¾¿äºŽç›´æŽ¥è®¿é—®ï¼‰
+    COLORREF colorGpu;   // GPUä½¿ç”¨çŽ‡æ˜¾ç¤ºé¢œè‰²
+    COLORREF colorTemp;  // æ¸©åº¦æ˜¾ç¤ºé¢œè‰²
+    COLORREF colorMem;   // å†…å­˜ä½¿ç”¨çŽ‡æ˜¾ç¤ºé¢œè‰²
 
-    /** ´Ó×¢²á±í¼ÓÔØ±£´æµÄÑÕÉ«ÉèÖÃ */
+    /** ä»Žæ³¨å†Œè¡¨åŠ è½½ä¿å­˜çš„é¢œè‰²è®¾ç½® */
     void LoadColors();
     
-    /** ½«µ±Ç°ÑÕÉ«ÉèÖÃ±£´æµ½×¢²á±í */
+    /** å°†å½“å‰é¢œè‰²è®¾ç½®ä¿å­˜åˆ°æ³¨å†Œè¡¨ */
     void SaveColors();
 };
